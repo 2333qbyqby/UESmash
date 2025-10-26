@@ -34,9 +34,8 @@ class APlatformingCharacter : public ACharacter
 	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
-	
-protected:
 
+protected:
 	/** Jump Input Action */
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* JumpAction;
@@ -58,12 +57,10 @@ protected:
 	UInputAction* DashAction;
 
 public:
-
 	/** Constructor */
 	APlatformingCharacter();
 
 protected:
-
 	/** Called for movement input */
 	void Move(const FInputActionValue& Value);
 
@@ -80,7 +77,6 @@ protected:
 	void ResetWallJump();
 
 public:
-
 	/** Handles move inputs from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoMove(float Right, float Forward);
@@ -102,7 +98,6 @@ public:
 	virtual void DoJumpEnd();
 
 protected:
-
 	/** Called from a delegate when the dash montage ends */
 	void DashMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
@@ -111,12 +106,10 @@ protected:
 	void SetJumpTrailState(bool bEnabled);
 
 public:
-
 	/** Ends the dash state */
 	void EndDash();
 
 public:
-
 	/** Returns true if the character has just double jumped */
 	UFUNCTION(BlueprintPure, Category="Platforming")
 	bool HasDoubleJumped() const;
@@ -125,8 +118,7 @@ public:
 	UFUNCTION(BlueprintPure, Category="Platforming")
 	bool HasWallJumped() const;
 
-public:	
-	
+public:
 	/** EndPlay cleanup */
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
@@ -139,8 +131,10 @@ public:
 	/** Handle movement mode changes to keep track of coyote time jumps */
 	virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode = 0) override;
 
-protected:
+	// 客户端获得控制权时（OnRep_Controller）再次强制切换到共享相机，防止回退到默认Pawn相机
+	virtual void OnRep_Controller() override;
 
+protected:
 	/** movement state flag bits, packed into a uint8 for memory efficiency */
 	uint8 bHasWallJumped : 1;
 	uint8 bHasDoubleJumped : 1;
@@ -190,5 +184,11 @@ public:
 
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
-
+public:
+	virtual void BeginPlay() override;
+	virtual void PossessedBy(AController* NewController) override;
+    
+private:
+	void RegisterWithCameraManager();
+	class ADynamicCameraManager* FindCameraManager() const;
 };

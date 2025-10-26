@@ -3,16 +3,16 @@
 
 #include "PlatformingCharacter.h"
 
+#include "DynamicCameraManager.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Camera/CameraComponent.h"
-#include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
 #include "TimerManager.h"
 #include "Engine/LocalPlayer.h"
-
+#include "EngineUtils.h"
 APlatformingCharacter::APlatformingCharacter()
 {
  	PrimaryActorTick.bCanEverTick = true;
@@ -76,6 +76,8 @@ APlatformingCharacter::APlatformingCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
 }
+
+
 
 void APlatformingCharacter::Move(const FInputActionValue& Value)
 {
@@ -319,6 +321,15 @@ void APlatformingCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 	// clear the wall jump reset timer
 	GetWorld()->GetTimerManager().ClearTimer(WallJumpTimer);
+
+	// 服务器侧注销，避免残留
+	if (HasAuthority())
+	{
+		if (ADynamicCameraManager* CameraManager = FindCameraManager())
+		{
+			CameraManager->Server_UnregisterPlayer(this);
+		}
+	}
 }
 
 void APlatformingCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -367,3 +378,73 @@ void APlatformingCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode
 	}
 }
 
+void APlatformingCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+    
+	// 仅本地控制的角色发起注册
+	if (IsLocallyControlled())
+	{
+		RegisterWithCameraManager();
+	}
+}
+
+void APlatformingCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+    
+	// 当角色被服务器端拥有时进行注册（覆盖重生/换人等情况）
+	if (HasAuthority())
+	{
+		UE_LOG(LogTemp, Log, TEXT("[PlatformingChar][Server:%s] PossessedBy -> RegisterWithCameraManager"), *GetNameSafe(this));
+		RegisterWithCameraManager();
+	}
+}
+
+void APlatformingCharacter::RegisterWithCameraManager()
+{
+	if (ADynamicCameraManager* CameraManager = FindCameraManager())
+	{
+		UE_LOG(LogTemp, Log, TEXT("[PlatformingChar][%s] Registering with CameraManager..."), *GetNameSafe(this));
+		CameraManager->RegisterPlayer(this);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[PlatformingChar][%s] RegisterWithCameraManager: CameraManager NOT FOUND"), HasAuthority() ? TEXT("Server") : (IsLocallyControlled() ? TEXT("Client-Local") : TEXT("Client-Remote")));
+	}
+}
+
+ADynamicCameraManager* APlatformingCharacter::FindCameraManager() const
+{
+	// 查找场景中的 DynamicCameraManager
+	for (TActorIterator<ADynamicCameraManager> It(GetWorld()); It; ++It)
+	{
+		return *It;
+	}
+
+	return nullptr;
+}
+
+void APlatformingCharacter::OnRep_Controller()
+{
+	Super::OnRep_Controller();
+
+	if (IsLocallyControlled())
+	{
+		// 停用本地Pawn自带的相机，避免抢回视角
+		if (FollowCamera)
+		{
+			FollowCamera->Deactivate();
+		}
+
+		// 强制切到共享相机（本地执行）
+		if (ADynamicCameraManager* CamMgr = FindCameraManager())
+		{
+			if (APlayerController* PC = Cast<APlayerController>(GetController()))
+			{
+				PC->SetViewTargetWithBlend(CamMgr, 0.2f);
+				UE_LOG(LogTemp, Log, TEXT("[PlatformingChar][Client:%s] OnRep_Controller -> SetViewTargetWithBlend"), *GetNameSafe(this));
+			}
+		}
+	}
+}
