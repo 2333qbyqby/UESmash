@@ -3,7 +3,6 @@
 
 #include "PlatformingCharacter.h"
 
-#include "DynamicCameraManager.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -12,7 +11,6 @@
 #include "EnhancedInputComponent.h"
 #include "TimerManager.h"
 #include "Engine/LocalPlayer.h"
-#include "EngineUtils.h"
 APlatformingCharacter::APlatformingCharacter()
 {
  	PrimaryActorTick.bCanEverTick = true;

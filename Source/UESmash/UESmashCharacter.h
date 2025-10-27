@@ -109,20 +109,9 @@ public:
 
 	/** Distance from the character to the camera */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|SideScroller")
-	float SideCameraDistance = 1600.f;
+	float SideCameraDistance = 800.f;
 
 	/** Optional offset of the camera socket (use to raise/lower camera) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|SideScroller")
 	FVector SideCameraSocketOffset = FVector::ZeroVector;
-
-	/** If true, use GameState's replicated target arm length to dynamically zoom (server computed) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|SideScroller|Dynamic")
-	bool bUseDynamicArmLengthFromGameState = true;
-
-	/** Speed for smoothing distance changes (units per second). 0 = snap */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|SideScroller|Dynamic")
-	float ArmLengthLerpSpeed = 800.f;
-
-protected:
-	virtual void Tick(float DeltaSeconds) override;
 };

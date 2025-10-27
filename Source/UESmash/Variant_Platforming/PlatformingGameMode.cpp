@@ -14,12 +14,6 @@ APlatformingGameMode::APlatformingGameMode()
 void APlatformingGameMode::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	// 只在服务器上生成摄像机管理器
-	if (HasAuthority())
-	{
-		SpawnCameraManager();
-	}
 }
 
 void APlatformingGameMode::PostLogin(APlayerController* NewPlayer)
@@ -85,22 +79,3 @@ void APlatformingGameMode::Logout(AController* Exiting)
 		}
 	}
 }
-
-void APlatformingGameMode::SpawnCameraManager()
-{
-	if (CameraManagerClass)
-	{
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.Owner = this;
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-        
-		ADynamicCameraManager* CameraManager = GetWorld()->SpawnActor<ADynamicCameraManager>(
-			CameraManagerClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
-        
-		if (CameraManager)
-		{
-			UE_LOG(LogTemp, Log, TEXT("[PlatformingGM][Server] DynamicCameraManager spawned successfully."));
-		}
-	}
-}
-

@@ -11,13 +11,13 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "UESmash.h"
-#include "UESmashGameState.h"
+#include "Kismet/GameplayStatics.h"
 
 AUESmashCharacter::AUESmashCharacter()
 {
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
-		
+
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
@@ -36,27 +36,21 @@ AUESmashCharacter::AUESmashCharacter()
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
 
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationRoll = false;
 	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
 
-	if (bEnableSideScrollerCamera)
-	{
-		// Side-scroller / Smash-style camera: fixed yaw/pitch and longer distance
-		CameraBoom->TargetArmLength = SideCameraDistance;
-		CameraBoom->bUsePawnControlRotation = false; // we drive the boom rotation manually
-		CameraBoom->SetRelativeRotation(FRotator(SideCameraPitch, SideCameraYaw, 0.f));
-		CameraBoom->SocketOffset = SideCameraSocketOffset;
-		// keep collision testing so the camera still avoids level geometry
-		CameraBoom->bDoCollisionTest = true;
-	}
-	else
-	{
-		// default third-person setup
-		CameraBoom->TargetArmLength = 400.0f;
-		CameraBoom->bUsePawnControlRotation = true;
-	}
 
+	// Side-scroller / Smash-style camera: fixed yaw/pitch and longer distance
+	CameraBoom->TargetArmLength = SideCameraDistance;
+	CameraBoom->bUsePawnControlRotation = false; // we drive the boom rotation manually
+	CameraBoom->SetRelativeRotation(FRotator(SideCameraPitch, SideCameraYaw, 0.f));
+	CameraBoom->SocketOffset = SideCameraSocketOffset;
+	// keep collision testing so the camera still avoids level geometry
+	CameraBoom->bDoCollisionTest = true;
 	// Create a follow camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
@@ -69,22 +63,25 @@ AUESmashCharacter::AUESmashCharacter()
 void AUESmashCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Set up action bindings
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
-		
+	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
+	{
 		// Jumping
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 
 		// Moving
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AUESmashCharacter::Move);
-		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &AUESmashCharacter::Look);
+		//EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &AUESmashCharacter::Look);
 
 		// Looking
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AUESmashCharacter::Look);
+		//EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AUESmashCharacter::Look);
 	}
 	else
 	{
-		UE_LOG(LogUESmash, Error, TEXT("'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
+		UE_LOG(LogUESmash, Error,
+		       TEXT(
+			       "'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."
+		       ), *GetNameSafe(this));
 	}
 }
 
@@ -148,31 +145,3 @@ void AUESmashCharacter::DoJumpEnd()
 	StopJumping();
 }
 
-void AUESmashCharacter::Tick(float DeltaSeconds)
-{
-	Super::Tick(DeltaSeconds);
-
-	if (!bEnableSideScrollerCamera)
-	{
-		return;
-	}
-
-	if (bUseDynamicArmLengthFromGameState && CameraBoom)
-	{
-		const AUESmashGameState* GSM = GetWorld() ? GetWorld()->GetGameState<AUESmashGameState>() : nullptr;
-		if (GSM)
-		{
-			const float Target = GSM->DynamicSideCameraArmLength;
-			if (ArmLengthLerpSpeed <= 0.f)
-			{
-				CameraBoom->TargetArmLength = Target;
-			}
-			else
-			{
-				const float Current = CameraBoom->TargetArmLength;
-				const float Step = ArmLengthLerpSpeed * DeltaSeconds;
-				CameraBoom->TargetArmLength = FMath::FInterpTo(Current, Target, DeltaSeconds, ArmLengthLerpSpeed / FMath::Max(KINDA_SMALL_NUMBER, FMath::Abs(Target - Current)));
-			}
-		}
-	}
-}

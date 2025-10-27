@@ -29,7 +29,6 @@ void AUESmashPlayerController::BeginPlay()
 			UE_LOG(LogUESmash, Error, TEXT("Could not spawn mobile controls widget."));
 
 		}
-
 	}
 }
 
