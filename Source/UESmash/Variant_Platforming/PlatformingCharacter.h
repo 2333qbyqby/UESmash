@@ -130,10 +130,6 @@ public:
 
 	/** Handle movement mode changes to keep track of coyote time jumps */
 	virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode = 0) override;
-
-	// 客户端获得控制权时（OnRep_Controller）再次强制切换到共享相机，防止回退到默认Pawn相机
-	virtual void OnRep_Controller() override;
-
 protected:
 	/** movement state flag bits, packed into a uint8 for memory efficiency */
 	uint8 bHasWallJumped : 1;
@@ -186,9 +182,4 @@ public:
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 public:
 	virtual void BeginPlay() override;
-	virtual void PossessedBy(AController* NewController) override;
-    
-private:
-	void RegisterWithCameraManager();
-	class ADynamicCameraManager* FindCameraManager() const;
 };

@@ -30,6 +30,8 @@ void ADynamicCameraManager::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ADynamicCameraManager, TrackedPlayers);
+	DOREPLIFETIME(ADynamicCameraManager, CameraTargetLocation);
+	DOREPLIFETIME(ADynamicCameraManager, ReplicatedTargetArmLength);
 }
 
 void ADynamicCameraManager::BeginPlay()
@@ -46,25 +48,28 @@ void ADynamicCameraManager::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	if (GetLocalRole() == ROLE_Authority)
 	{
-		UpdateCameraOnServer();
+		UpdateCameraOnServer(DeltaTime);
 	}
 }
 
-void ADynamicCameraManager::UpdateCameraOnServer()
+void ADynamicCameraManager::UpdateCameraOnServer(float DeltaTime)
 {
 	if (TrackedPlayers.Num() == 0)
 	{
 		return;
 	}
-
 	const FVector Center = CalculatePlayersCenter();
 	const float MaxDistance = CalculateMaxPlayerDistance();
 
 	const float NewDistance = FMath::Clamp(MaxDistance * 1.2f, MinCameraDistance, MaxCameraDistance);
-	const float LerpedDistance = FMath::FInterpTo(SpringArm->TargetArmLength, NewDistance, GetWorld()->GetDeltaSeconds(), CameraLagSpeed);
 
+	// Write replicated variables so clients will get the updated location and arm length
+	CameraTargetLocation = Center;
+	ReplicatedTargetArmLength = NewDistance;
+
+	// Apply locally on the server immediately as well
 	SetActorLocation(Center);
-	SpringArm->TargetArmLength = LerpedDistance;
+	//SpringArm->TargetArmLength = NewDistance;
 }
 
 FVector ADynamicCameraManager::CalculatePlayersCenter() const
@@ -102,11 +107,34 @@ float ADynamicCameraManager::CalculateMaxPlayerDistance() const
 	return FMath::Sqrt(MaxDistSq);
 }
 
-void ADynamicCameraManager::OnRep_TrackedPlayers() const
+void ADynamicCameraManager::OnRep_TrackedPlayers()
 {
-	// Optional: Add client-side logic here if needed when the player list updates.
-	// For example, updating a UI element that shows tracked players.
+	// Client: tracked players list changed. We could use this to update local state/UI.
 	UE_LOG(LogTemp, Log, TEXT("[DynamicCameraManager][Client] TrackedPlayers list replicated. Count: %d"), TrackedPlayers.Num());
+}
+
+void ADynamicCameraManager::OnRep_CameraTargetLocation()
+{
+	// Apply replicated camera transform on clients when server updates it
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		return; // Server already applied
+	}
+
+	SetActorLocation(CameraTargetLocation);
+}
+
+void ADynamicCameraManager::OnRep_TargetArmLength()
+{
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		return;
+	}
+
+	if (SpringArm)
+	{
+		SpringArm->TargetArmLength = ReplicatedTargetArmLength;
+	}
 }
 
 void ADynamicCameraManager::SetAsViewTargetForAllPlayers()
@@ -125,9 +153,14 @@ void ADynamicCameraManager::SetAsViewTargetForAllPlayers()
 
 void ADynamicCameraManager::RegisterPlayer(APlatformingCharacter* Player)
 {
+	if (!IsValid(Player))
+	{
+		return;
+	}
+
 	if (GetLocalRole() == ROLE_Authority)
 	{
-		Server_RegisterPlayer_Implementation(Player);
+		AddPlayer_Internal(Player);
 	}
 	else
 	{
@@ -137,9 +170,14 @@ void ADynamicCameraManager::RegisterPlayer(APlatformingCharacter* Player)
 
 void ADynamicCameraManager::UnregisterPlayer(APlatformingCharacter* Player)
 {
+	if (!IsValid(Player))
+	{
+		return;
+	}
+
 	if (GetLocalRole() == ROLE_Authority)
 	{
-		Server_UnregisterPlayer_Implementation(Player);
+		RemovePlayer_Internal(Player);
 	}
 	else
 	{
@@ -147,15 +185,15 @@ void ADynamicCameraManager::UnregisterPlayer(APlatformingCharacter* Player)
 	}
 }
 
-void ADynamicCameraManager::Server_RegisterPlayer_Implementation(APlatformingCharacter* Player)
+void ADynamicCameraManager::AddPlayer_Internal(APlatformingCharacter* Player)
 {
 	if (IsValid(Player) && !TrackedPlayers.Contains(Player))
 	{
 		TrackedPlayers.Add(Player);
 		AddTickPrerequisiteActor(Player);
 		UE_LOG(LogTemp, Log, TEXT("[DynamicCameraManager][Server] Registered player: %s. Total tracked: %d"), *Player->GetName(), TrackedPlayers.Num());
-		
-		if (TrackedPlayers.Num() >= 1)
+
+		if (TrackedPlayers.Num() == 1)
 		{
 			// When the first player joins, set the view target for everyone.
 			Multicast_SetAsViewTarget();
@@ -163,7 +201,7 @@ void ADynamicCameraManager::Server_RegisterPlayer_Implementation(APlatformingCha
 	}
 }
 
-void ADynamicCameraManager::Server_UnregisterPlayer_Implementation(APlatformingCharacter* Player)
+void ADynamicCameraManager::RemovePlayer_Internal(APlatformingCharacter* Player)
 {
 	if (IsValid(Player) && TrackedPlayers.Contains(Player))
 	{
@@ -171,6 +209,16 @@ void ADynamicCameraManager::Server_UnregisterPlayer_Implementation(APlatformingC
 		RemoveTickPrerequisiteActor(Player);
 		UE_LOG(LogTemp, Log, TEXT("[DynamicCameraManager][Server] Unregistered player: %s. Total tracked: %d"), *Player->GetName(), TrackedPlayers.Num());
 	}
+}
+
+void ADynamicCameraManager::Server_RegisterPlayer_Implementation(APlatformingCharacter* Player)
+{
+	AddPlayer_Internal(Player);
+}
+
+void ADynamicCameraManager::Server_UnregisterPlayer_Implementation(APlatformingCharacter* Player)
+{
+	RemovePlayer_Internal(Player);
 }
 
 void ADynamicCameraManager::Multicast_SetAsViewTarget_Implementation()

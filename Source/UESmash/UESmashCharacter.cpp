@@ -11,6 +11,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "UESmash.h"
+#include "UESmashGameState.h"
 
 AUESmashCharacter::AUESmashCharacter()
 {
@@ -38,8 +39,23 @@ AUESmashCharacter::AUESmashCharacter()
 	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->TargetArmLength = 400.0f;
-	CameraBoom->bUsePawnControlRotation = true;
+
+	if (bEnableSideScrollerCamera)
+	{
+		// Side-scroller / Smash-style camera: fixed yaw/pitch and longer distance
+		CameraBoom->TargetArmLength = SideCameraDistance;
+		CameraBoom->bUsePawnControlRotation = false; // we drive the boom rotation manually
+		CameraBoom->SetRelativeRotation(FRotator(SideCameraPitch, SideCameraYaw, 0.f));
+		CameraBoom->SocketOffset = SideCameraSocketOffset;
+		// keep collision testing so the camera still avoids level geometry
+		CameraBoom->bDoCollisionTest = true;
+	}
+	else
+	{
+		// default third-person setup
+		CameraBoom->TargetArmLength = 400.0f;
+		CameraBoom->bUsePawnControlRotation = true;
+	}
 
 	// Create a follow camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -130,4 +146,33 @@ void AUESmashCharacter::DoJumpEnd()
 {
 	// signal the character to stop jumping
 	StopJumping();
+}
+
+void AUESmashCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	if (!bEnableSideScrollerCamera)
+	{
+		return;
+	}
+
+	if (bUseDynamicArmLengthFromGameState && CameraBoom)
+	{
+		const AUESmashGameState* GSM = GetWorld() ? GetWorld()->GetGameState<AUESmashGameState>() : nullptr;
+		if (GSM)
+		{
+			const float Target = GSM->DynamicSideCameraArmLength;
+			if (ArmLengthLerpSpeed <= 0.f)
+			{
+				CameraBoom->TargetArmLength = Target;
+			}
+			else
+			{
+				const float Current = CameraBoom->TargetArmLength;
+				const float Step = ArmLengthLerpSpeed * DeltaSeconds;
+				CameraBoom->TargetArmLength = FMath::FInterpTo(Current, Target, DeltaSeconds, ArmLengthLerpSpeed / FMath::Max(KINDA_SMALL_NUMBER, FMath::Abs(Target - Current)));
+			}
+		}
+	}
 }

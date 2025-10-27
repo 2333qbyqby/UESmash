@@ -42,7 +42,7 @@ protected:
 
 private:
 	//~ Server-side Logic
-	void UpdateCameraOnServer();
+	void UpdateCameraOnServer(float DeltaTime);
 	FVector CalculatePlayersCenter() const;
 	float CalculateMaxPlayerDistance() const;
 
@@ -51,10 +51,27 @@ private:
 	TArray<TObjectPtr<APlatformingCharacter>> TrackedPlayers;
 
 	UFUNCTION()
-	void OnRep_TrackedPlayers() const; 
+	void OnRep_TrackedPlayers();
+
+	// Replicated camera target data (written by server, applied by clients)
+	UPROPERTY(ReplicatedUsing = OnRep_CameraTargetLocation)
+	FVector CameraTargetLocation;
+
+	UFUNCTION()
+	void OnRep_CameraTargetLocation();
+
+	UPROPERTY(ReplicatedUsing = OnRep_TargetArmLength)
+	float ReplicatedTargetArmLength = 1000.0f;
+
+	UFUNCTION()
+	void OnRep_TargetArmLength();
 
 	//~ View Target Logic
 	void SetAsViewTargetForAllPlayers();
+
+	// Local helpers used by server-side logic (keeps RPC implementations small)
+	void AddPlayer_Internal(APlatformingCharacter* Player);
+	void RemovePlayer_Internal(APlatformingCharacter* Player);
 
 public:
 	//~ Public API for GameMode/Character to call

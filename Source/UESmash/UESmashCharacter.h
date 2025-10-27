@@ -92,5 +92,37 @@ public:
 
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
-};
 
+	// --- Side-scroller camera settings (Smash-style) ---
+
+	/** Enable side-scroller camera (when true camera is positioned on the side, facing the arena) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|SideScroller")
+	bool bEnableSideScrollerCamera = true;
+
+	/** World yaw for the side camera (default 90 = right side) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|SideScroller")
+	float SideCameraYaw = 90.f;
+
+	/** Pitch angle for the side camera (negative looks slightly down) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|SideScroller")
+	float SideCameraPitch = -10.f;
+
+	/** Distance from the character to the camera */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|SideScroller")
+	float SideCameraDistance = 1600.f;
+
+	/** Optional offset of the camera socket (use to raise/lower camera) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|SideScroller")
+	FVector SideCameraSocketOffset = FVector::ZeroVector;
+
+	/** If true, use GameState's replicated target arm length to dynamically zoom (server computed) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|SideScroller|Dynamic")
+	bool bUseDynamicArmLengthFromGameState = true;
+
+	/** Speed for smoothing distance changes (units per second). 0 = snap */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|SideScroller|Dynamic")
+	float ArmLengthLerpSpeed = 800.f;
+
+protected:
+	virtual void Tick(float DeltaSeconds) override;
+};
