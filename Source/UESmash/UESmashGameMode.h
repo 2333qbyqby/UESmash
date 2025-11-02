@@ -21,4 +21,7 @@ public:
 	/** Constructor */
 	AUESmashGameMode();
 	// Enable ticking to update dynamic camera target on server
+	// 头文件中重写声明
+protected:
+	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 };
