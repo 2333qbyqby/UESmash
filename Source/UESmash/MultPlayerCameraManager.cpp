@@ -56,9 +56,9 @@ void AMultPlayerCameraManager::Tick(float DeltaTime)
  
 	FVector BoundsCenter, BoundsExtent;
 	UGameplayStatics::GetActorArrayBounds(PlayerActors, false, BoundsCenter, BoundsExtent);
- 
-	FVector NewLocation = BoundsCenter;
- 
+	//获取原来的摄像机位置
+	FVector OldLocation = CameraBoom->GetComponentLocation();
+	FVector NewLocation = FVector(OldLocation.X,BoundsCenter.Y, BoundsCenter.Z );
 	CameraBoom->SetWorldLocation(NewLocation);
 	CameraBoom->SetWorldRotation(FRotator(SideCameraPitch, SideCameraYaw, 0.f));
 	CameraBoom->TargetArmLength = SideCameraDistance;

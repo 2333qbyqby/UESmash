@@ -28,7 +28,7 @@ protected:
 	UCameraComponent* FollowCamera;
 	// 可调节参数
 	UPROPERTY(EditAnywhere, Category = "Camera")
-	float SideCameraDistance = 1200.f;
+	float SideCameraDistance = 800.f;
 
 	UPROPERTY(EditAnywhere, Category = "Camera")
 	float SideCameraPitch = -20.f;
