@@ -71,10 +71,6 @@ void AUESmashCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 		// Moving
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AUESmashCharacter::Move);
-		//EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &AUESmashCharacter::Look);
-
-		// Looking
-		//EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AUESmashCharacter::Look);
 	}
 	else
 	{
@@ -88,9 +84,9 @@ void AUESmashCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 void AUESmashCharacter::Move(const FInputActionValue& Value)
 {
 	// input is a float
-	float MovementValue = Value.Get<float>();
+	float movementValue = Value.Get<float>();
 	// route the input
-	DoMove(0.0f, MovementValue);
+	DoMove(0.0f, movementValue);
 }
 
 void AUESmashCharacter::Look(const FInputActionValue& Value)
