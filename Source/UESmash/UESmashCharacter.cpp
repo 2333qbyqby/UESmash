@@ -87,11 +87,10 @@ void AUESmashCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 void AUESmashCharacter::Move(const FInputActionValue& Value)
 {
-	// input is a Vector2D
-	FVector2D MovementVector = Value.Get<FVector2D>();
-
+	// input is a float
+	float MovementValue = Value.Get<float>();
 	// route the input
-	DoMove(MovementVector.X, MovementVector.Y);
+	DoMove(0.0f, MovementValue);
 }
 
 void AUESmashCharacter::Look(const FInputActionValue& Value)

@@ -45,6 +45,7 @@ void AUESmashPlayerController::SetupInputComponent()
 			for (UInputMappingContext* CurrentContext : DefaultMappingContexts)
 			{
 				Subsystem->AddMappingContext(CurrentContext, 0);
+				UE_LOG(LogUESmash, Log, TEXT("Added IMC: %s"), *CurrentContext->GetName());
 			}
 
 			// only add these IMCs if we're not using mobile touch input
